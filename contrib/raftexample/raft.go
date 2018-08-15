@@ -263,16 +263,21 @@ func (rc *raftNode) startRaft() {
 			log.Fatalf("raftexample: cannot create dir for snapshot (%v)", err)
 		}
 	}
+
+	//创建快照
 	rc.snapshotter = snap.New(zap.NewExample(), rc.snapdir)
 	rc.snapshotterReady <- rc.snapshotter
 
 	oldwal := wal.Exist(rc.waldir)
+	//重放WAl日志
 	rc.wal = rc.replayWAL()
 
 	rpeers := make([]raft.Peer, len(rc.peers))
 	for i := range rpeers {
 		rpeers[i] = raft.Peer{ID: uint64(i + 1)}
 	}
+
+	//Raft配置项
 	c := &raft.Config{
 		ID:              uint64(rc.id),
 		ElectionTick:    10,
@@ -283,12 +288,14 @@ func (rc *raftNode) startRaft() {
 	}
 
 	if oldwal {
+		//已经安装过WAL则直接重启Node
 		rc.node = raft.RestartNode(c)
 	} else {
 		startPeers := rpeers
 		if rc.join {
 			startPeers = nil
 		}
+		//第一次安装，则重新部署
 		rc.node = raft.StartNode(c, startPeers)
 	}
 
